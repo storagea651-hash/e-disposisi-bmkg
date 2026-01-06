@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\SuratMasukController;
 use App\Http\Controllers\Admin\SuratKeluarController;
 use App\Http\Controllers\Pimpinan\PimpinanDashboardController;
+use App\Http\Controllers\Pimpinan\SuratMasukPimpinanController;
 use Illuminate\Support\Facades\Route;
 
 // Public Route
@@ -45,16 +46,37 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     // Routes untuk Disposisi, Arsip akan ditambahkan di tahap berikutnya
     Route::get('/disposisi', fn() => view('admin.disposisi.index'))->name('disposisi.index');
     Route::get('/arsip', fn() => view('admin.arsip.index'))->name('arsip.index');
+
+    Route::get('surat-masuk/{suratMasuk}/generate-disposisi', [SuratMasukController::class, 'generateDisposisi'])
+    ->name('surat-masuk.generate-disposisi');
+
 });
 
 // Pimpinan Routes
-Route::middleware(['auth', 'pimpinan'])->prefix('pimpinan')->name('pimpinan.')->group(function () {
-    Route::get('/dashboard', [PimpinanDashboardController::class, 'index'])->name('dashboard');
-    
-    // Routes untuk Disposisi, dll akan ditambahkan di tahap berikutnya
-    // Temporary routes untuk menu sidebar
-    Route::get('/surat-masuk', fn() => view('pimpinan.surat-masuk.index'))->name('surat-masuk.index');
-    Route::get('/disposisi', fn() => view('pimpinan.disposisi.index'))->name('disposisi.index');
-});
+// Pimpinan Routes
+Route::middleware(['auth', 'pimpinan'])
+    ->prefix('pimpinan')
+    ->name('pimpinan.')
+    ->group(function () {
+
+        // Dashboard Pimpinan
+        Route::get('/dashboard', [PimpinanDashboardController::class, 'index'])
+            ->name('dashboard');
+
+        // Surat Masuk (dari Admin)
+        Route::get('/surat-masuk', [SuratMasukPimpinanController::class, 'index'])
+            ->name('surat-masuk.index');
+
+        // Form Disposisi Pimpinan
+        Route::get('/disposisi', fn() => view('pimpinan.disposisi.index'))->name('disposisi.index');
+        Route::get('/surat-masuk/{suratMasuk}/disposisi', [SuratMasukPimpinanController::class, 'create'])
+            ->name('disposisi.create');
+        
+
+        // Simpan Disposisi
+        Route::post('/surat-masuk/{suratMasuk}/disposisi', [SuratMasukPimpinanController::class, 'store'])
+            ->name('disposisi.store');
+    });
+
 
 require __DIR__.'/auth.php';

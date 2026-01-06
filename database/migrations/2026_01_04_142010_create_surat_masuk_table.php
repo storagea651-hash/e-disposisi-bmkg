@@ -18,7 +18,7 @@ return new class extends Migration
             $table->date('tanggal_surat');
             $table->date('diterima_tanggal');
             $table->string('no_agenda')->unique();
-            $table->enum('sifat', ['Sangat Segera', 'Segera', 'Rahasia']);
+            $table->string('sifat')->nullable();
             $table->text('perihal');
             $table->string('file_surat')->nullable(); // untuk upload file surat (PDF)
             $table->timestamps();

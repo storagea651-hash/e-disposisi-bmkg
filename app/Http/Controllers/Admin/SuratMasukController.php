@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\SuratMasuk;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpWord\TemplateProcessor;
 
 class SuratMasukController extends Controller
 {
@@ -60,7 +61,7 @@ class SuratMasukController extends Controller
             'tanggal_surat' => 'required|date',
             'diterima_tanggal' => 'required|date',
             'no_agenda' => 'required|unique:surat_masuk,no_agenda|max:255',
-            'sifat' => 'required|in:Sangat Segera,Segera,Rahasia',
+            $validated['sifat'] = 'Belum Ditentukan',
             'perihal' => 'required',
             'file_surat' => 'nullable|file|mimes:pdf|max:2048', // Max 2MB
         ], [
@@ -128,7 +129,6 @@ class SuratMasukController extends Controller
             'tanggal_surat' => 'required|date',
             'diterima_tanggal' => 'required|date',
             'no_agenda' => 'required|max:255|unique:surat_masuk,no_agenda,' . $suratMasuk->id,
-            'sifat' => 'required|in:Sangat Segera,Segera,Rahasia',
             'perihal' => 'required',
             'file_surat' => 'nullable|file|mimes:pdf|max:2048',
         ], [
@@ -187,4 +187,95 @@ class SuratMasukController extends Controller
     {
         return view('admin.surat-masuk.print', compact('suratMasuk'));
     }
+
+public function generateDisposisi(SuratMasuk $suratMasuk)
+{
+    $disposisi = $suratMasuk->disposisi;
+    if (!$disposisi) {
+        return redirect()->back()->with('error', 'Disposisi pimpinan belum dibuat.');
+    }
+
+    $templatePath = storage_path('app/templates/template_disposisi.docx');
+    if (!file_exists($templatePath)) {
+        return redirect()->back()->with('error', 'Template disposisi tidak ditemukan.');
+    }
+
+    $tp = new TemplateProcessor($templatePath);
+
+    // Helper aman
+    $fmtDate = fn($d) => $d ? $d->format('d/m/Y') : '-';
+    $text = fn($v) => (isset($v) && trim((string)$v) !== '') ? (string)$v : '-';
+
+    // Centang aman untuk Word
+    $tick = fn(bool $v) => $v ? '✓' : ''; // template kotaknya tetap dari DOCX
+
+    // Normalisasi array checkbox (biar tidak gagal karena beda spasi/kasus)
+    $normArr = function ($val): array {
+        if (is_null($val)) return [];
+        if (is_string($val)) {
+            $decoded = json_decode($val, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) $val = $decoded;
+        }
+        if (!is_array($val)) return [];
+        return array_values(array_filter(array_map(fn($x) => trim((string)$x), $val)));
+    };
+
+    $hasValue = function (array $arr, string $needle): bool {
+        $needleN = mb_strtolower(trim($needle));
+        foreach ($arr as $v) {
+            if (mb_strtolower(trim((string)$v)) === $needleN) return true;
+        }
+        return false;
+    };
+
+    // ======================
+    // 1) Isi data Admin
+    // ======================
+    $tp->setValue('surat_dari', $text($suratMasuk->surat_dari));
+    $tp->setValue('tgl_diterima', $fmtDate($suratMasuk->diterima_tanggal));
+    $tp->setValue('no_agenda', $text($suratMasuk->no_agenda));
+    $tp->setValue('nomor_surat', $text($suratMasuk->nomor_surat));
+    $tp->setValue('tgl_surat', $fmtDate($suratMasuk->tanggal_surat));
+    $tp->setValue('perihal', $text($suratMasuk->perihal));
+
+    // ======================
+    // 2) Isi data Pimpinan
+    // ======================
+    $sifat = trim((string)($disposisi->sifat ?? ''));
+
+    $tp->setValue('sifat_sangat_segera', $tick($sifat === 'Sangat Segera'));
+    $tp->setValue('sifat_segera', $tick($sifat === 'Segera'));
+    $tp->setValue('sifat_rahasia', $tick($sifat === 'Rahasia'));
+
+    $diteruskan = $normArr($disposisi->diteruskan_kepada);
+    $harap = $normArr($disposisi->dengan_hormat_harap);
+
+    $tp->setValue('tu_keu', $tick($hasValue($diteruskan, 'Petugas Tata Usaha dan Keuangan')));
+    $tp->setValue('ppk', $tick($hasValue($diteruskan, 'PPK')));
+    $tp->setValue('operasional', $tick($hasValue($diteruskan, 'Operasional')));
+    $tp->setValue('koord_operasional', $tick($hasValue($diteruskan, 'Koordinator Operasional')));
+
+    $tp->setValue('harap_tanggapan', $tick($hasValue($harap, 'Memberi Tanggapan/Saran')));
+    $tp->setValue('harap_proses', $tick($hasValue($harap, 'Proses Lebih Lanjut')));
+    $tp->setValue('harap_koordinasi', $tick($hasValue($harap, 'Koordinasi/Konfirmasi')));
+
+    $tp->setValue('catatan', $text($disposisi->catatan_disposisi));
+
+    // ======================
+    // 3) Save + download
+    // ======================
+    $fileName = 'DISPOSISI_' . preg_replace('/[^A-Za-z0-9_\-]/', '_', $suratMasuk->no_agenda ?? 'SURAT') . '_' . time() . '.docx';
+    $outputDir = storage_path('app/public/disposisi');
+    $outputPath = $outputDir . '/' . $fileName;
+
+    if (!is_dir($outputDir)) {
+        mkdir($outputDir, 0775, true);
+    }
+
+    $tp->saveAs($outputPath);
+
+    return response()->download($outputPath)->deleteFileAfterSend(true);
+}
+
+
 }

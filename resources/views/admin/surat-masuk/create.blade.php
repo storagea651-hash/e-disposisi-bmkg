@@ -94,22 +94,7 @@
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
                 </div>
-
-                <!-- Sifat -->
-                <div>
-                    <label for="sifat" class="block text-sm font-medium text-gray-700 mb-2">
-                        Sifat <span class="text-red-500">*</span>
-                    </label>
-                    <select name="sifat" id="sifat" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-transparent @error('sifat') border-red-500 @enderror">
-                        <option value="">-- Pilih Sifat --</option>
-                        <option value="Sangat Segera" {{ old('sifat') == 'Sangat Segera' ? 'selected' : '' }}>Sangat Segera</option>
-                        <option value="Segera" {{ old('sifat') == 'Segera' ? 'selected' : '' }}>Segera</option>
-                        <option value="Rahasia" {{ old('sifat') == 'Rahasia' ? 'selected' : '' }}>Rahasia</option>
-                    </select>
-                    @error('sifat')
-                        <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
-                    @enderror
-                </div>
+                
             </div>
 
             <!-- Perihal -->

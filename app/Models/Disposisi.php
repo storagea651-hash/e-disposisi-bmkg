@@ -28,6 +28,11 @@ class Disposisi extends Model
         'catatan_disposisi',
         'tanggal_disposisi',
         'status',
+
+        // ⬇⬇⬇ TAMBAHAN UNTUK PIMPINAN ⬇⬇⬇
+        'sifat',
+        'diteruskan_kepada',
+        'dengan_hormat_harap',
     ];
 
     /**
@@ -39,8 +44,13 @@ class Disposisi extends Model
     {
         return [
             'tanggal_disposisi' => 'date',
+
+            // ⬇⬇⬇ INI PENTING ⬇⬇⬇
+            'diteruskan_kepada' => 'array',
+            'dengan_hormat_harap' => 'array',
         ];
     }
+
 
     /**
      * Relasi ke tabel surat_masuk (Many to One)
@@ -60,3 +70,4 @@ class Disposisi extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
 }
+
